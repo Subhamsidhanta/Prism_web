@@ -24,6 +24,7 @@ except ImportError as e:
     raise ImportError(f"Failed to import ingestion modules. Please ensure dependencies are installed: {e}")
 
 from .llm_service import mistral_llm
+from .vector_service import vector_service
 from .progress_service import progress_service
 
 class DocumentQAService:
@@ -133,20 +134,14 @@ class DocumentQAService:
         """
         try:
             if not mistral_llm.is_ready():
-                mode = os.getenv("LLM_MODE", "local")
-                provider = os.getenv("LLM_PROVIDER", "local")
-                # Provide clearer guidance depending on mode
-                if mode == "api":
-                    hint = (
-                        "API LLM not ready. Ensure LLM_API_KEY is set and provider/model names are valid. "
-                        "Example (PowerShell): $env:LLM_MODE='api'; $env:LLM_PROVIDER='google'; $env:LLM_API_KEY='YOUR_KEY'; "
-                        "$env:LLM_MODEL_NAME='gemini-1.5-flash' then restart server."
-                    )
-                else:
-                    hint = (
-                        "Local LLM not ready. Either place a .gguf model under models/llm/ or switch to API mode by setting "
-                        "LLM_MODE=api and providing API credentials."
-                    )
+                mode = os.getenv("LLM_MODE", "api")
+                provider = os.getenv("LLM_PROVIDER", "api")
+                # Only support API mode
+                hint = (
+                    "API LLM not ready. Ensure LLM_API_KEY is set and provider/model names are valid. "
+                    "Example (PowerShell): $env:LLM_MODE='api'; $env:LLM_PROVIDER='google'; $env:LLM_API_KEY='YOUR_KEY'; "
+                    "$env:LLM_MODEL_NAME='gemini-1.5-flash' then restart server."
+                )
                 return {"success": False, "error": f"LLM not ready (mode={mode}, provider={provider}). {hint}"}
             
             # Get relevant chunks with caching
@@ -188,48 +183,46 @@ class DocumentQAService:
             }
     
     def _find_relevant_chunks(self, question: str, file_id: str = None, max_chunks: int = 5) -> List[Dict]:
-        """
-        Find relevant chunks for the question
-        For now, uses simple keyword matching. Can be enhanced with embeddings later.
-        """
-        all_chunks = []
-        
-        # Get chunks from specified document or all documents
+        """Find relevant chunks via vector DB (semantic) fallback to keyword."""
+        if vector_service.is_ready():
+            try:
+                results = vector_service.query(question, top_k=max_chunks, file_id=file_id)
+                if results:
+                    # Map results to chunk-like dicts
+                    enriched = []
+                    for r in results:
+                        enriched.append({
+                            "file_id": r.get("file_id"),
+                            "chunk_id": r.get("chunk_id"),
+                            "page": r.get("page"),
+                            "text": r.get("text"),
+                            "relevance_score": r.get("score", 0.0)
+                        })
+                    return enriched
+            except Exception as e:
+                logger.error(f"Vector query failed, falling back to keyword: {e}")
+        # Fallback keyword search
+        all_chunks: List[Dict] = []
         if file_id and file_id in self.document_chunks:
             all_chunks = self.document_chunks[file_id]
         else:
             for chunks in self.document_chunks.values():
                 all_chunks.extend(chunks)
-        
         if not all_chunks:
             return []
-        
-        # Simple keyword-based relevance scoring
         question_keywords = set(question.lower().split())
-        
         scored_chunks = []
         for chunk in all_chunks:
-            chunk_text = chunk["text"].lower()
-            # Count keyword matches
-            matches = sum(1 for keyword in question_keywords if keyword in chunk_text)
-            # Add partial matches (substring matching)
-            partial_matches = sum(1 for keyword in question_keywords 
-                                if any(keyword in word for word in chunk_text.split()))
-            
-            total_score = matches * 2 + partial_matches  # Exact matches worth more
-            
-            chunk_with_score = chunk.copy()
-            chunk_with_score["relevance_score"] = total_score
-            scored_chunks.append(chunk_with_score)
-        
-        # Sort by relevance and return top chunks
+            text_lower = chunk["text"].lower()
+            matches = sum(1 for k in question_keywords if k in text_lower)
+            partial = sum(1 for k in question_keywords if any(k in w for w in text_lower.split()))
+            score = matches * 2 + partial
+            c = chunk.copy()
+            c["relevance_score"] = score
+            scored_chunks.append(c)
         scored_chunks.sort(key=lambda x: x["relevance_score"], reverse=True)
-        
-        # If no good matches, return the first few chunks anyway
-        if not any(chunk["relevance_score"] > 0 for chunk in scored_chunks[:max_chunks]):
-            logger.info("No keyword matches found, returning first chunks as fallback")
+        if not any(c["relevance_score"] > 0 for c in scored_chunks[:max_chunks]):
             return all_chunks[:max_chunks]
-        
         return scored_chunks[:max_chunks]
     
     def _build_context(self, chunks: List[Dict], max_length: int = 1000) -> str:

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { Toaster } from 'react-hot-toast'
 import Header from './components/Header'
 import SearchInterface from './components/SearchInterface'
-import FileUpload from './components/FileUpload'
+// import FileUpload from './components/FileUpload'
 import ResultsDisplay from './components/ResultsDisplay'
 import Sidebar from './components/Sidebar'
 import DocumentQA from './components/DocumentQA'
@@ -95,9 +95,9 @@ function App() {
                       <DocumentQA />
                     )}
 
-                    {activeTab === 'upload' && (
+                    {/* {activeTab === 'upload' && (
                       <FileUpload onFileUpload={handleFileUpload} uploadedFiles={uploadedFiles} />
-                    )}
+                    )} */}
 
                     {activeTab === 'images' && (
                       <ImageQA />
