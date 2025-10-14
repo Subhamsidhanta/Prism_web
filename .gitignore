@@ -1,0 +1,116 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build outputs
+dist/
+build/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Model files and data
+models/llm/*.gguf
+models/llm/*.bin
+models/llm/*.safetensors
+models/embed/*.bin
+models/embed/*.safetensors
+models/embed/*.gguf
+
+# Data directories
+data/uploads/*
+data/processed/*
+data/indices/*
+!data/uploads/.gitkeep
+!data/processed/.gitkeep
+!data/indices/.gitkeep
+
+# Backend data
+backend/data/uploads/*
+backend/data/processed/*
+!backend/data/uploads/.gitkeep
+!backend/data/processed/.gitkeep
+
+# Large files
+*.gguf
+*.bin
+*.safetensors
+*.h5
+*.pkl
+*.pickle
+*.parquet
+
+# Audio/Video files
+*.mp3
+*.wav
+*.m4a
+*.mp4
+*.avi
+*.mov
+
+# Image files (if large datasets)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+
+# Document files (uploaded content)
+data/**/*.pdf
+data/**/*.docx
+data/**/*.doc
+backend/data/**/*.pdf
+backend/data/**/*.docx
+backend/data/**/*.doc
