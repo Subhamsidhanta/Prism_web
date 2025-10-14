@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: prism-backend
+    env: python
+    plan: starter
+    region: oregon
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: LLM_MODE
+        value: api
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: LLM_MODEL_NAME
+        value: gemini-2.5-flash
+      - key: VECTOR_DB
+        value: qdrant
+      - key: QDRANT_URL
+        value: https://YOUR_QDRANT_CLOUD_ENDPOINT
+      - key: QDRANT_COLLECTION
+        value: prism_chunks
+      - key: EMBED_MODEL
+        value: sentence-transformers/all-MiniLM-L6-v2
+      - key: FRONTEND_ORIGIN
+        value: https://YOUR_VERCEL_FRONTEND_HOST
+    # Mark secrets in Render dashboard (do not commit real keys):
+    # - LLM_API_KEY
+    # - QDRANT_API_KEY

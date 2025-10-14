@@ -11,7 +11,8 @@ const FileUpload = ({ onFileUpload, uploadedFiles }) => {
   // Function to poll for processing progress
   const pollProgress = async (progressId, fileName) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/processing-status/${progressId}`)
+  const base = import.meta.env.VITE_API_BASE || ''
+  const response = await fetch(`${base}/api/processing-status/${progressId}`)
       
       if (!response.ok) {
         console.error(`Progress polling failed for ${fileName}: ${response.status}`)
@@ -62,7 +63,8 @@ const FileUpload = ({ onFileUpload, uploadedFiles }) => {
         formData.append('file', file);
 
         try {
-          const response = await fetch('http://localhost:8000/api/upload', {
+          const base = import.meta.env.VITE_API_BASE || ''
+          const response = await fetch(`${base}/api/upload`, {
             method: 'POST',
             body: formData,
           });

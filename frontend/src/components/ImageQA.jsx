@@ -21,7 +21,8 @@ const ImageQA = () => {
 
   const loadImages = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/images')
+  const base = import.meta.env.VITE_API_BASE || ''
+  const response = await fetch(`${base}/api/images`)
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
@@ -48,7 +49,8 @@ const ImageQA = () => {
         [file.name]: { status: 'uploading', percentage: 0 }
       }))
 
-      const response = await fetch('http://localhost:8000/api/upload', {
+  const base = import.meta.env.VITE_API_BASE || ''
+  const response = await fetch(`${base}/api/upload`, {
         method: 'POST',
         body: formData,
       })
@@ -95,7 +97,8 @@ const ImageQA = () => {
 
     try {
       // Note: This would need backend implementation for image Q&A
-      const response = await fetch('http://localhost:8000/api/image-question', {
+  const base = import.meta.env.VITE_API_BASE || ''
+  const response = await fetch(`${base}/api/image-question`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

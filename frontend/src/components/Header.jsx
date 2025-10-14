@@ -12,7 +12,8 @@ const Header = ({ onMenuToggle }) => {
   useEffect(() => {
     const fetchModelStatus = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/model/status')
+  const base = import.meta.env.VITE_API_BASE || ''
+  const response = await fetch(`${base}/api/model/status`)
         const data = await response.json()
         setModelStatus({
           model_loaded: data.model_loaded,

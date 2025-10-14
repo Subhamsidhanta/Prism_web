@@ -17,7 +17,8 @@ const HardwareToggle = () => {
   // Fetch current hardware status
   const fetchHardwareStatus = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/model/status')
+  const base = import.meta.env.VITE_API_BASE || ''
+  const response = await axios.get(`${base}/api/model/status`)
       setHardwareInfo(response.data)
       setIsInitialLoad(false)
     } catch (error) {
@@ -37,7 +38,8 @@ const HardwareToggle = () => {
 
     setIsLoading(true)
     try {
-      const response = await axios.post('http://localhost:8000/api/model/toggle-hardware')
+  const base = import.meta.env.VITE_API_BASE || ''
+  const response = await axios.post(`${base}/api/model/toggle-hardware`)
       
       if (response.data.success) {
         setHardwareInfo(prev => ({
