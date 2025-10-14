@@ -50,7 +50,7 @@ const DocumentQA = () => {
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/documents')
+      const response = await fetch(`${import.meta.env.VITE_API_BASE || ''}/api/documents`)
       const data = await response.json()
       if (data.success) {
         setUploadedDocuments(data.documents)
@@ -69,7 +69,7 @@ const DocumentQA = () => {
 
     setIsLoading(true)
     try {
-      const response = await fetch('http://localhost:8000/api/upload', {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE || ''}/api/upload`, {
         method: 'POST',
         body: formData,
       })
@@ -157,7 +157,7 @@ const DocumentQA = () => {
       }
       setMessages(prev => [...prev, userMessage, placeholderMessage])
 
-      const response = await fetch('http://localhost:8000/api/question', {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE || ''}/api/question`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

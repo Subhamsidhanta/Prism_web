@@ -28,6 +28,7 @@ Prism is a **multimodal RAG (Retrieval-Augmented Generation) system** that enabl
 - 🎨 **Modern UI** - Beautiful React interface with Tailwind CSS and Framer Motion
 - 🚀 **Fast API** - High-performance FastAPI backend with async processing
 - 🔒 **Privacy-Focused** - Your data never leaves your device
+- 🧮 **Semantic Search (Optional)** - Enable Qdrant vector database for embedding-based retrieval
 
 ### 🎯 Current Status
 
@@ -112,6 +113,164 @@ npm run dev
 Open your browser and go to `http://localhost:3000` 🎉
 
 > 📋 For detailed setup instructions, see [SETUP_QA.md](SETUP_QA.md)
+
+### 🔍 Enabling Semantic Vector Search (Qdrant)
+
+Prism can upgrade from simple keyword chunk matching to semantic similarity using embeddings stored in a Qdrant vector database.
+
+1. Add Qdrant service (already in `docker-compose.yml` after integration):
+    ```bash
+    docker compose up -d qdrant
+    ```
+2. Set environment variables in `backend/.env` (copy from `.env.example`):
+    ```bash
+    VECTOR_DB=qdrant
+    QDRANT_URL=http://qdrant:6333
+    QDRANT_COLLECTION=prism_chunks
+    EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2
+    ```
+3. Install new dependencies if running locally without Docker:
+    ```bash
+    pip install qdrant-client sentence-transformers torch
+    ```
+4. Process or re-process documents (new uploads will auto-upsert embeddings).
+5. Backfill existing processed JSON files:
+    ```bash
+    python backfill_vector_db.py
+    ```
+6. Ask questions; retrieval now uses semantic search when `VECTOR_DB=qdrant`.
+
+Fallback: If Qdrant is disabled or not ready, system automatically falls back to keyword matching.
+
+### 🌐 Production Deployment (Vercel Frontend + Render Backend)
+
+You can deploy Prism with a serverless-friendly architecture:
+
+| Layer | Platform | Notes |
+|-------|----------|-------|
+| Frontend (React/Vite) | Vercel | Static build served via Vercel CDN |
+| Backend (FastAPI) | Render Web Service | Persistent Python service running Uvicorn |
+| Vector DB | Qdrant Cloud | Managed vector search (recommended) |
+| LLM Provider | API (e.g. Gemini/OpenAI) | Use API mode for lower resource footprint |
+
+#### 1. Prepare Backend for Render
+
+Render looks for a start command and dependencies:
+
+`render.yaml` provided in repo:
+```yaml
+services:
+    - type: web
+        name: prism-backend
+        env: python
+        buildCommand: "pip install -r backend/requirements.txt"
+        startCommand: "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+```
+
+Set Render environment variables (Dashboard → Environment):
+```
+LLM_MODE=api
+LLM_PROVIDER=gemini
+LLM_MODEL_NAME=gemini-2.5-flash
+VECTOR_DB=qdrant
+QDRANT_URL=https://YOUR_QDRANT_CLOUD_ENDPOINT
+QDRANT_COLLECTION=prism_chunks
+EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2
+FRONTEND_ORIGIN=https://YOUR_VERCEL_DOMAIN
+```
+Secrets (mark as protected):
+```
+LLM_API_KEY=your_gemini_or_openai_key
+QDRANT_API_KEY=your_qdrant_cloud_key
+```
+
+Optional scaling: Switch to multiple workers using `gunicorn -k uvicorn.workers.UvicornWorker -w 2 app.main:app` when concurrency grows.
+
+#### 2. Frontend on Vercel
+
+Add project → Import repository → Select `frontend/` subdirectory.
+
+Environment variable (Vercel dashboard):
+```
+VITE_API_BASE=https://YOUR_RENDER_BACKEND_HOST
+```
+
+`vercel.json` (already in `frontend/`):
+```json
+{
+    "version": 2,
+    "redirects": [
+        { "source": "/api/(.*)", "destination": "https://YOUR_RENDER_BACKEND_HOST/api/$1" }
+    ]
+}
+```
+
+Alternative: Remove redirect and rely solely on `VITE_API_BASE` inside code. Keeping the redirect allows relative fetches if you later simplify code.
+
+#### 3. Vector Database (Qdrant Cloud)
+
+1. Create collection `prism_chunks`.
+2. Set `QDRANT_URL` and `QDRANT_API_KEY`.
+3. Run a one-time backfill locally or create an admin endpoint to re-ingest documents.
+
+#### 4. Disable Embedded Mode in Production
+
+Ensure:
+```
+QDRANT_EMBEDDED=0
+```
+or omit it entirely. Embedded storage is for local dev only.
+
+#### 5. CORS Configuration
+
+Backend determines allowed origins via `FRONTEND_ORIGIN`. For multiple domains:
+```
+FRONTEND_ORIGIN=https://your-main-frontend.app
+CORS_ADDITIONAL_ORIGINS=https://staging-your-frontend.app,https://preview.vercel.app
+```
+
+#### 6. Health & Monitoring
+
+- Health endpoint: `/` returns basic status.
+- Add external uptime monitoring (e.g. UptimeRobot) pointing to `/`.
+- Log retention: Render retains logs; export periodically for audit.
+
+#### 7. Production Tips
+
+- Use API LLM provider for lower memory footprint vs local GGUF.
+- Consider a smaller embedding model if latency is high (e.g. `all-MiniLM-L6-v2` is already light).
+- Rate-limit upload endpoint or add auth if public exposure is planned.
+- Add request logging middleware for auditing (not yet included).
+
+#### 8. Optional Gunicorn/Workers
+
+Adjust `startCommand` for more CPU cores:
+```
+startCommand: "cd backend && gunicorn -k uvicorn.workers.UvicornWorker -w 2 -t 120 app.main:app --bind 0.0.0.0:$PORT"
+```
+
+Increase `-w` workers cautiously; embeddings and LLM calls can be CPU intensive.
+
+#### 9. CI/CD Considerations
+
+- Vercel auto-builds on push to main unless protected.
+- Render deploy hook: Create a Deploy Hook URL and trigger via GitHub action after tests pass.
+
+Example GitHub Action snippet:
+```yaml
+jobs:
+    deploy-backend:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Run tests
+                run: pytest -q
+            - name: Trigger Render Deploy
+                run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+```
+
+---
+
 
 ---
 

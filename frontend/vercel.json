@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "name": "prism-frontend",
+  "framework": null,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "redirects": [
+    { "source": "/api/(.*)", "destination": "https://YOUR_RENDER_BACKEND_HOST/api/$1" }
+  ]
+}

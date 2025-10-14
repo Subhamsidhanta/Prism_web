@@ -13,7 +13,8 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, onClose }) => {
   const fetchFileCounts = async () => {
     try {
       // Fetch documents count
-      const documentsResponse = await fetch('http://localhost:8000/api/documents')
+  const base = import.meta.env.VITE_API_BASE || ''
+  const documentsResponse = await fetch(`${base}/api/documents`)
       const documentsData = await documentsResponse.json()
       const documentsCount = documentsData.success ? documentsData.count || 0 : 0
 

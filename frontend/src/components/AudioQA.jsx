@@ -23,7 +23,8 @@ const AudioQA = () => {
 
   const loadAudio = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/audio')
+  const base = import.meta.env.VITE_API_BASE || ''
+  const response = await fetch(`${base}/api/audio`)
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
@@ -50,7 +51,8 @@ const AudioQA = () => {
         [file.name]: { status: 'uploading', percentage: 0 }
       }))
 
-      const response = await fetch('http://localhost:8000/api/upload', {
+  const base = import.meta.env.VITE_API_BASE || ''
+  const response = await fetch(`${base}/api/upload`, {
         method: 'POST',
         body: formData,
       })
@@ -121,7 +123,8 @@ const AudioQA = () => {
 
     try {
       // Note: This would need backend implementation for audio Q&A
-      const response = await fetch('http://localhost:8000/api/audio-question', {
+  const base = import.meta.env.VITE_API_BASE || ''
+  const response = await fetch(`${base}/api/audio-question`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
