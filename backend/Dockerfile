@@ -4,14 +4,20 @@ FROM python:3.12-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for potential PDF processing optimizations
+# Install system dependencies for potential PDF processing optimizations and Rust for tiktoken
 RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
+    # Install Rust for building tiktoken
+    && curl https://sh.rustup.rs -sSf | sh -s -- -y \
+    && . $HOME/.cargo/env \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better Docker caching
 COPY requirements.txt .
+
+# Ensure Rust is on PATH for pip install
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
