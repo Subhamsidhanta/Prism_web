@@ -13,7 +13,7 @@ import toast from 'react-hot-toast'
 import { addToSearchHistory } from './SearchHistory'
 
 const DocumentQA = () => {
-  const [messages, setMessages] = useState([])
+  const [messagesByDoc, setMessagesByDoc] = useState({}) // { [file_id]: [messages] }
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [uploadedDocuments, setUploadedDocuments] = useState([])
@@ -30,11 +30,11 @@ const DocumentQA = () => {
   // Anti-flicker: only scroll when a new message is appended
   // (typing updates content on the last assistant message without changing the list length)
   useEffect(() => {
-    if (messages.length > prevLenRef.current) {
+    if (Object.values(messagesByDoc).flat().length > prevLenRef.current) {
       scrollToBottom('smooth')
     }
-    prevLenRef.current = messages.length
-  }, [messages.length])
+    prevLenRef.current = Object.values(messagesByDoc).flat().length
+  }, [messagesByDoc])
 
   useEffect(() => {
     // Load uploaded documents on component mount
@@ -93,7 +93,10 @@ const DocumentQA = () => {
           content: `Document "${file.name}" has been uploaded and is being processed. You'll be notified when it's ready for questions.`,
           timestamp: new Date().toLocaleTimeString()
         }
-        setMessages(prev => [...prev, systemMessage])
+        setMessagesByDoc(prev => ({
+          ...prev,
+          [data.file_id]: [...(prev[data.file_id] || []), systemMessage]
+        }))
         
         // TODO: Poll for processing completion using data.progress_id
         // For now, we'll just mark it as ready after a delay
@@ -110,7 +113,10 @@ const DocumentQA = () => {
             content: `Document "${file.name}" has been processed and is ready for questions.`,
             timestamp: new Date().toLocaleTimeString()
           }
-          setMessages(prev => [...prev, completionMessage])
+          setMessagesByDoc(prev => ({
+            ...prev,
+            [data.file_id]: [...(prev[data.file_id] || []), completionMessage]
+          }))
         }, 3000) // 3 second delay for demo
         
       } else {
@@ -155,7 +161,10 @@ const DocumentQA = () => {
         success: undefined,
         typing: true
       }
-      setMessages(prev => [...prev, userMessage, placeholderMessage])
+      setMessagesByDoc(prev => ({
+        ...prev,
+        [selectedDocument]: [...(prev[selectedDocument] || []), userMessage, placeholderMessage]
+      }))
 
   const response = await fetch(`${import.meta.env.VITE_API_BASE || ''}/api/question`, {
         method: 'POST',
@@ -197,7 +206,10 @@ const DocumentQA = () => {
       const typeNext = () => {
         i += 1
         const partial = finalText.slice(0, i)
-        setMessages(prev => prev.map(m => (m.id === placeholderId ? { ...m, content: partial } : m)))
+        setMessagesByDoc(prev => ({
+          ...prev,
+          [selectedDocument]: prev[selectedDocument].map(m => (m.id === placeholderId ? { ...m, content: partial } : m))
+        }))
         if (i < finalText.length) {
           typingTimerRef.current = setTimeout(typeNext, speedMs)
         } else {
@@ -206,18 +218,21 @@ const DocumentQA = () => {
             typingTimerRef.current = null
           }
           // Mark typing complete and attach sources/flags
-          setMessages(prev => prev.map(m => {
-            if (m.id === placeholderId) {
-              return {
-                ...m,
-                typing: false,
-                success: !!data.success,
-                sources: data.sources || [],
-                context_used: data.context_used || false,
-                processing_time: data.processing_time || null
+          setMessagesByDoc(prev => ({
+            ...prev,
+            [selectedDocument]: prev[selectedDocument].map(m => {
+              if (m.id === placeholderId) {
+                return {
+                  ...m,
+                  typing: false,
+                  success: !!data.success,
+                  sources: data.sources || [],
+                  context_used: data.context_used || false,
+                  processing_time: data.processing_time || null
+                }
               }
-            }
-            return m
+              return m
+            })
           }))
           // Final scroll when typing is done
           scrollToBottom('smooth')
@@ -230,23 +245,32 @@ const DocumentQA = () => {
     } catch (error) {
       // On error, update placeholder (if exists) or add a new assistant message
       const fallbackText = 'Sorry, there was an error processing your question. Please check if the backend is running and try again.'
-      setMessages(prev => {
-        const last = prev[prev.length - 1]
+      setMessagesByDoc(prev => {
+        const last = prev[selectedDocument]?.[prev[selectedDocument].length - 1]
         if (last && last.type === 'assistant' && last.typing) {
-          return prev.map((m, idx, arr) => idx === arr.length - 1
-            ? { ...m, content: fallbackText, typing: false, success: false, sources: [] }
-            : m
-          )
+          return {
+            ...prev,
+            [selectedDocument]: prev[selectedDocument].map((m, idx, arr) => idx === arr.length - 1
+              ? { ...m, content: fallbackText, typing: false, success: false, sources: [] }
+              : m
+            )
+          }
         }
-        return [...prev, {
-          id: Date.now() + 1,
-          type: 'assistant',
-          content: fallbackText,
-          timestamp: new Date().toLocaleTimeString(),
-          sources: [],
-          context_used: false,
-          success: false
-        }]
+        return {
+          ...prev,
+          [selectedDocument]: [
+            ...prev[selectedDocument] || [],
+            {
+              id: Date.now() + 1,
+              type: 'assistant',
+              content: fallbackText,
+              timestamp: new Date().toLocaleTimeString(),
+              sources: [],
+              context_used: false,
+              success: false
+            }
+          ]
+        }
       })
       toast.error('Connection error - check backend server')
       console.error('Send message error:', error)
@@ -426,7 +450,7 @@ const DocumentQA = () => {
       <div className="flex-1 flex flex-col min-h-0">
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 bg-gray-50">
-          {messages.length === 0 ? (
+          {Object.values(messagesByDoc).flat().length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center px-3 sm:px-4 max-w-sm sm:max-w-md lg:max-w-lg">
                 <Bot className="w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 text-gray-400 mx-auto mb-3 lg:mb-4" />
@@ -439,7 +463,7 @@ const DocumentQA = () => {
             </div>
           ) : (
             <div>
-              {messages.map((message) => (
+              {messagesByDoc[selectedDocument]?.map((message) => (
                 <Message key={message.id} message={message} />
               ))}
               {/* Loading bubble removed in favor of single assistant placeholder that is updated via typewriter */}
