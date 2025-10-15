@@ -24,11 +24,14 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Prism Document Q&A API", version="1.0.0")
 
 # Configure CORS dynamically based on environment variables
-frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")  # Vite default dev port
+frontend_origin = os.getenv("FRONTEND_ORIGIN", "https://prismweb-one.vercel.app")  # Vite default dev port
 additional_origins = os.getenv("CORS_ADDITIONAL_ORIGINS", "").split(",") if os.getenv("CORS_ADDITIONAL_ORIGINS") else []
 allow_origins = [o.strip() for o in [frontend_origin] + additional_origins if o.strip()]
 if not allow_origins:
-    allow_origins = ["*"]  # Fallback; better to explicitly set in production
+    allow_origins = [
+        "https://prismweb-one.vercel.app",
+        "https://prism-web-frontend.onrender.com"
+    ]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
