@@ -13,7 +13,14 @@ import toast from 'react-hot-toast'
 import { addToSearchHistory } from './SearchHistory'
 
 const DocumentQA = () => {
-  const [messagesByDoc, setMessagesByDoc] = useState({}) // { [file_id]: [messages] }
+  const [messagesByDoc, setMessagesByDoc] = useState(() => {
+    try {
+      const saved = localStorage.getItem('prism_messagesByDoc')
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  }) // { [file_id]: [messages] }
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [uploadedDocuments, setUploadedDocuments] = useState([])
@@ -367,6 +374,11 @@ const DocumentQA = () => {
     </div>
     )
   })
+
+  useEffect(() => {
+    // Save chat history to localStorage whenever it changes
+    localStorage.setItem('prism_messagesByDoc', JSON.stringify(messagesByDoc))
+  }, [messagesByDoc])
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-8rem)] max-w-full">
