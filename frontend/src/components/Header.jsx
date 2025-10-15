@@ -67,8 +67,8 @@ const Header = ({ onMenuToggle }) => {
         <h4 className='text-center font-medium text-red-500 tracking-tight 
                        text-xs sm:text-sm md:text-base lg:text-lg 
                        px-2 md:px-4'>
-          <span className="md:hidden">Prototype build – final version coming soon.</span>
-          <span className="hidden md:inline">This is our prototype not the final project, the final project must have offline mode...</span>
+          {/* <span className="md:hidden">Prototype build – final version coming soon.</span> */}
+          {/* <span className="hidden md:inline">This is our prototype not the final project, the final project must have offline mode...</span> */}
         </h4>
         <div className="flex items-center space-x-2 md:space-x-4">
           {/* Model Status */}
